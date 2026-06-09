@@ -1,0 +1,43 @@
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+
+# Backend
+backend/.pytest_cache/
+backend/.venv/
+backend/venv/
+backend/env/
+backend/__pycache__/
+
+# Virtual Environment
+venv/
+.venv/
+env/
+
+# Uploads
+backend/uploads/
+
+# Python
+*.pyc
+*.pyo
+*.pyd
+# Python
+__pycache__/
+*.py[cod]
+
+# Environment Variables
+.env
+frontend/.env
+backend/.env
+
+# Logs
+*.log
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
