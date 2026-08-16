@@ -1,0 +1,36 @@
+{
+  "rules": {
+    "import/no-extraneous-dependencies": [
+      "error",
+      {
+        "packageDir": [".", "test/e2e"],
+        "devDependencies": true
+      }
+    ],
+    "import/extensions": [
+      "error",
+      "ignorePackages",
+      {
+        "ts": "never"
+      }
+    ],
+    "import/no-unresolved": [
+      2,
+      {
+        // ignoring `@wdio/globals` & `allure-commandline` due to a bug in eslint-plugin-import
+        // https://github.com/import-js/eslint-plugin-import/issues/2703
+        "ignore": [
+          "@wdio/globals",
+          "allure-commandline",
+          "@wdio/json-reporter/mergeResults",
+          "@influxdata/influxdb-client",
+          "@wdio/logger",
+          "^uuid$",
+          "winston",
+          "@ffmpeg-installer/ffmpeg"
+        ]
+      }
+    ],
+    "import/prefer-default-export": "off"
+  }
+}

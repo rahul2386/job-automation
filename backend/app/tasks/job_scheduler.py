@@ -5,7 +5,7 @@ from apscheduler.triggers.interval import IntervalTrigger
 
 from app.config import ENABLE_SCHEDULER, JOB_SCHEDULER_INTERVAL_HOURS
 from app.models import SessionLocal
-from app.services.job_search import fetch_and_store_recent_jobs
+from app.services.job_service import fetch_and_store_recent_jobs
 
 scheduler = BackgroundScheduler(timezone="UTC")
 

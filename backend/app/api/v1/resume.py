@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.models import Resume, User, get_db
 from app.schemas.resume import ResumeResponse
-from app.services.embeddings import generate_resume_embeddings
+from app.services.embedding_service import embedding_service
 from app.services.resume_parser import parse_resume_pdf
 
 router = APIRouter(prefix="/resume", tags=["resume"])
@@ -60,7 +60,6 @@ async def upload_resume(
 
     try:
         parsed = parse_resume_pdf(file_path)
-        embeddings = generate_resume_embeddings(parsed)
     except Exception as exc:
         file_path.unlink(missing_ok=True)
         raise HTTPException(
@@ -80,7 +79,6 @@ async def upload_resume(
         resume.education = parsed["education"]
         resume.projects = parsed["projects"]
         resume.contact_info = parsed["contact_info"]
-        resume.embeddings = embeddings
         if old_path != file_path:
             old_path.unlink(missing_ok=True)
     else:
@@ -94,10 +92,10 @@ async def upload_resume(
             education=parsed["education"],
             projects=parsed["projects"],
             contact_info=parsed["contact_info"],
-            embeddings=embeddings,
         )
         db.add(resume)
 
+    embedding_service.ensure_resume_embedding(resume)
     db.commit()
     db.refresh(resume)
     return resume
