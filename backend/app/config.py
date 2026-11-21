@@ -43,6 +43,7 @@ ALLOWED_COUNTRIES = _csv_env("ALLOWED_COUNTRIES", "India")
 ALLOWED_LOCATIONS = _csv_env("ALLOWED_LOCATIONS", "india,remote,hyderabad,bangalore,bengaluru,pune,noida,gurgaon,delhi,mumbai,chennai")
 ALLOWED_ROLES = _csv_env("ALLOWED_ROLES", "backend,full stack,react,frontend,node.js,python,ai,ml,llm,agentic ai,rag,sde-1,software engineer,software developer")
 EXPERIENCE_LIMIT = int(os.getenv("EXPERIENCE_LIMIT", "3"))
+CANDIDATE_EXPERIENCE_YEARS = float(os.getenv("CANDIDATE_EXPERIENCE_YEARS", "1.5"))
 MIN_MATCH_SCORE = float(os.getenv("MIN_MATCH_SCORE", "70"))
 MATCH_LLM_ENABLED = os.getenv("MATCH_LLM_ENABLED", "true").lower() != "false"
 JOB_SEARCH_DAYS = int(os.getenv("JOB_SEARCH_DAYS", "3"))

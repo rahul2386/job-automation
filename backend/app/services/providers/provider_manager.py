@@ -40,12 +40,16 @@ class ProviderManager:
                 provider_jobs = provider.fetch_jobs(cutoff)
 
                 print(f"Provider: {provider.__class__.__name__}")
-                print(f"Fetched: {len(provider_jobs)} jobs")
+                print("Status: SUCCESS")
+                print(f"Jobs: {len(provider_jobs)}")
 
                 jobs.extend(provider_jobs)
 
             except Exception as e:
-                print(f"Provider: {provider.__class__.__name__} failed:", e)
+                print(f"Provider: {provider.__class__.__name__}")
+                print("Status: FAILED")
+                print("Jobs: 0")
+                print(f"Reason: {type(e).__name__}: {e}")
 
         print("")
         print("TOTAL RAW JOBS:")
@@ -54,6 +58,9 @@ class ProviderManager:
         return jobs
 
     def _providers(self):
+        if self.providers is not None:
+            return self.providers
+
         providers = provider_registry.get_enabled_providers()
 
         print("Providers:")

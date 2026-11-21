@@ -112,70 +112,69 @@ class Matcher:
         resume_vector: list[float],
         jobs: list[Job],
     ) -> list[Job]:
-        if(index <= 20):
-            print("=" * 50)
-            print("STAGE 5 : MATCHER")
-            print("=" * 50)
-            print(f"Jobs received: {len(jobs)}")
+        print("=" * 50)
+        print("STAGE 5 : MATCHER")
+        print("=" * 50)
+        print(f"Jobs received: {len(jobs)}")
 
-            scored_jobs: list[Job] = []
+        scored_jobs: list[Job] = []
 
-            for index, job in enumerate(jobs, start=1):
+        for index, job in enumerate(jobs, start=1):
 
-                print("-" * 60)
-                print(f"JOB #{index}")
-                print(f"Company : {job.company}")
-                print(f"Title   : {job.title}")
+            print("-" * 60)
+            print(f"JOB #{index}")
+            print(f"Company : {job.company}")
+            print(f"Title   : {job.title}")
 
-                job_vector = self._embedding_vector(job.embeddings)
+            job_vector = self._embedding_vector(job.embeddings)
 
-                if not job_vector:
-                    print("Result  : SKIPPED (No Embedding)")
-                    continue
+            if not job_vector:
+                print("Result  : SKIPPED (No Embedding)")
+                continue
 
-                similarity_score = self._cosine_similarity(
-                    resume_vector,
-                    job_vector,
-                ) * 100
+            similarity_score = self._cosine_similarity(
+                resume_vector,
+                job_vector,
+            ) * 100
 
-                business_score = self._business_score(
-                    resume,
-                    job,
-                )
+            business_score = self._business_score(
+                resume,
+                job,
+            )
 
-                final_score = self._final_score(
-                    similarity_score,
-                    business_score,
-                )
+            final_score = self._final_score(
+                similarity_score,
+                business_score,
+            )
 
-                print(f"Cosine Similarity : {similarity_score:.2f}")
-                print(f"Business Score    : {business_score:.2f}")
-                print(f"Final Score       : {final_score:.2f}")
+            print(f"Cosine Similarity : {similarity_score:.2f}")
+            print(f"Business Score    : {business_score:.2f}")
+            print(f"Final Score       : {final_score:.2f}")
 
-                job.match_score = final_score
-                job.match_reason = self._default_match_reason(
-                    similarity_score,
-                    business_score,
-                )
-                job.missing_skills = self._missing_skills(
-                    resume,
-                    job,
-                )
+            job.match_score = final_score
+            job.match_reason = self._default_match_reason(
+                similarity_score,
+                business_score,
+            )
+            job.missing_skills = self._missing_skills(
+                resume,
+                job,
+            )
 
-                print(f"Missing Skills    : {job.missing_skills}")
+            print(f"Missing Skills    : {job.missing_skills}")
 
-                if final_score >= MIN_MATCH_SCORE:
-                    print("MATCH RESULT      : PASSED")
-                else:
-                    print("MATCH RESULT      : REJECTED")
+            if final_score >= MIN_MATCH_SCORE:
+                print("MATCH RESULT      : PASSED")
+            else:
+                print("MATCH RESULT      : REJECTED")
 
-                scored_jobs.append(job)
+            scored_jobs.append(job)
 
-            print("=" * 50)
-            print(f"Jobs Scored : {len(scored_jobs)}")
-            print("=" * 50)
+        print("=" * 50)
+        print(f"Jobs Scored : {len(scored_jobs)}")
+        print("=" * 50)
 
-            return scored_jobs
+        return scored_jobs
 
     def _embedding_vector(self, embeddings: Any) -> list[float]:
         if not isinstance(embeddings, dict):
@@ -232,7 +231,7 @@ class Matcher:
         return max(0.0, min(100.0, score))
 
     def _role_score(self, job: Job) -> float:
-        text = self._job_text(job)
+        text = (job.title or "").lower()
         for index, (_, terms) in enumerate(ROLE_PRIORITY):
             if any(term in text for term in terms):
                 return max(8.0, 18.0 - index)
@@ -248,14 +247,13 @@ class Matcher:
         return min(18.0, (matched / max(1, len(resume_skills))) * 18.0)
 
     def _experience_score(self, job: Job) -> float:
-        text = self._job_text(job)
-        if any(term in text for term in ("entry level", "junior", "associate", "sde-1", "sde 1")):
+        title_text = (job.title or "").lower()
+        if any(term in title_text for term in ("entry level", "junior", "associate", "sde-1", "sde 1")):
             return 8.0
-
-        years = [int(match) for match in re.findall(r"(\d+)\s*\+?\s*(?:years|yrs)", text)]
-        if not years:
+        requirements = self.filter_service.extract_experience_requirements(job.description or "")
+        if not requirements:
             return 4.0
-        return 8.0 if min(years) <= 3 else 0.0
+        return 8.0 if self.filter_service.is_valid_experience(job.title or "", job.description or "") else 0.0
 
     def _location_score(self, job: Job) -> float:
         return 8.0 if self.filter_service.is_valid_location(job.location or "", job.country or "", bool(job.remote)) else 0.0

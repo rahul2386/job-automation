@@ -29,6 +29,8 @@ class LeverProvider(JobProvider):
         jobs: list[dict[str, Any]] = []
         counters = self._empty_counters()
         raw_samples: list[dict[str, Any]] = []
+        last_error: requests.RequestException | None = None
+        account_results: list[dict[str, Any]] = []
 
         for company in self.companies:
             try:
@@ -36,12 +38,30 @@ class LeverProvider(JobProvider):
                 jobs.extend(company_jobs)
                 self._merge_counters(counters, company_counters)
                 raw_samples.extend(company_samples)
+                account_results.append(
+                    {
+                        "account": company,
+                        "status": "SUCCESS",
+                        "jobs": len(company_jobs),
+                        "reason": "",
+                    }
+                )
             except requests.RequestException as exc:
-                print("Exception type:")
-                print(type(exc).__name__)
-                print("Exception message:")
-                print(exc)
+                last_error = exc
+                account_results.append(
+                    {
+                        "account": company,
+                        "status": "FAILED",
+                        "jobs": 0,
+                        "reason": self._failure_reason(exc),
+                    }
+                )
                 continue
+
+        self._print_provider_summary(account_results, len(jobs))
+
+        if last_error is not None and not jobs:
+            raise last_error
 
         self._print_summary(counters)
         if counters["accepted_jobs"] == 0:
@@ -84,6 +104,16 @@ class LeverProvider(JobProvider):
                 payload = response.json()
                 self._print_response_size(payload)
                 return payload
+            except requests.HTTPError as exc:
+                last_error = exc
+                print("Exception type:")
+                print(type(exc).__name__)
+                print("Exception message:")
+                print(exc)
+                print("URL being requested:")
+                print(url)
+                if exc.response is not None and exc.response.status_code in {403, 404, 429}:
+                    break
             except requests.RequestException as exc:
                 last_error = exc
                 print("Exception type:")
@@ -121,6 +151,26 @@ class LeverProvider(JobProvider):
         print("Accepted:")
         print(counters["accepted_jobs"])
 
+    def _print_provider_summary(self, account_results: list[dict[str, Any]], total_jobs: int) -> None:
+        valid_count = sum(1 for result in account_results if result["status"] == "SUCCESS")
+        failed_count = sum(1 for result in account_results if result["status"] == "FAILED")
+
+        print("===== LEVER PROVIDER SUMMARY =====")
+        print(f"Configured accounts: {len(account_results)}")
+        print("")
+        for result in account_results:
+            print(f"Account: {result['account']}")
+            print(f"Status: {result['status']}")
+            if result["status"] == "SUCCESS":
+                print(f"Jobs: {result['jobs']}")
+            else:
+                print(result["reason"])
+            print("")
+        print(f"Total valid accounts: {valid_count}")
+        print(f"Total failed accounts: {failed_count}")
+        print(f"Total jobs fetched: {total_jobs}")
+        print("==================================")
+
     def _print_response_size(self, payload: Any) -> None:
         if isinstance(payload, list):
             print("Jobs endpoint returned:")
@@ -138,6 +188,11 @@ class LeverProvider(JobProvider):
             return parsed < cutoff
         except (TypeError, ValueError):
             return False
+
+    def _failure_reason(self, exc: requests.RequestException) -> str:
+        if isinstance(exc, requests.HTTPError) and exc.response is not None:
+            return f"HTTP: {exc.response.status_code}"
+        return f"Reason: {type(exc).__name__}: {exc}"
 
 
 provider_registry.register("lever", LeverProvider)

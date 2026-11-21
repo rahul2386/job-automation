@@ -29,6 +29,8 @@ class GreenhouseProvider(JobProvider):
         jobs: list[dict[str, Any]] = []
         counters = self._empty_counters()
         raw_samples: list[dict[str, Any]] = []
+        valid_boards: list[str] = []
+        failed_boards: list[tuple[str, str]] = []
 
         for board in self.boards:
             try:
@@ -36,14 +38,18 @@ class GreenhouseProvider(JobProvider):
                 jobs.extend(board_jobs)
                 self._merge_counters(counters, board_counters)
                 raw_samples.extend(board_samples)
+                valid_boards.append(board)
             except requests.RequestException as exc:
-                print("Exception type:")
-                print(type(exc).__name__)
-                print("Exception message:")
-                print(exc)
+                failed_boards.append((board, self._failure_reason(exc)))
                 continue
 
         self._print_summary(counters)
+        self._print_provider_summary(
+            configured_count=len(self.boards),
+            valid_boards=valid_boards,
+            failed_boards=failed_boards,
+            jobs_fetched=len(jobs),
+        )
         if counters["accepted_jobs"] == 0:
             print("First 3 raw jobs received:")
             pprint(raw_samples[:3])
@@ -90,6 +96,16 @@ class GreenhouseProvider(JobProvider):
                 payload = response.json()
                 self._print_response_size(payload)
                 return payload
+            except requests.HTTPError as exc:
+                last_error = exc
+                print("Exception type:")
+                print(type(exc).__name__)
+                print("Exception message:")
+                print(exc)
+                print("URL being requested:")
+                print(url)
+                if exc.response is not None and exc.response.status_code == 404:
+                    break
             except requests.RequestException as exc:
                 last_error = exc
                 print("Exception type:")
@@ -127,6 +143,26 @@ class GreenhouseProvider(JobProvider):
         print("Accepted:")
         print(counters["accepted_jobs"])
 
+    def _print_provider_summary(
+        self,
+        configured_count: int,
+        valid_boards: list[str],
+        failed_boards: list[tuple[str, str]],
+        jobs_fetched: int,
+    ) -> None:
+        print("## GREENHOUSE PROVIDER SUMMARY")
+        print(f"Configured boards: {configured_count}")
+        print(f"Valid boards: {len(valid_boards)}")
+        print(f"Invalid boards: {len(failed_boards)}")
+        print(f"Jobs fetched: {jobs_fetched}")
+        print("Failed boards:")
+        if failed_boards:
+            for board, reason in failed_boards:
+                print(f"- {board} -> {reason}")
+        else:
+            print("- none")
+        print("---")
+
     def _print_response_size(self, payload: Any) -> None:
         if isinstance(payload, dict) and isinstance(payload.get("jobs"), list):
             print("Jobs endpoint returned:")
@@ -146,6 +182,11 @@ class GreenhouseProvider(JobProvider):
             return parsed < cutoff
         except ValueError:
             return False
+
+    def _failure_reason(self, exc: requests.RequestException) -> str:
+        if isinstance(exc, requests.HTTPError) and exc.response is not None:
+            return f"HTTP {exc.response.status_code}"
+        return f"{type(exc).__name__}: {exc}"
 
 
 provider_registry.register("greenhouse", GreenhouseProvider)
